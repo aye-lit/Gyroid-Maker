@@ -1,0 +1,10 @@
+{
+  "name": "gyroid-maker",
+  "version": "1.0.0",
+  "description": "Browser tool that makes gyroid patches, cubes, cells and gyroid-filled versions of uploaded models, exported as STL, 3MF or OBJ.",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test/mesher.test.js && node test/model.test.js"
+  }
+}

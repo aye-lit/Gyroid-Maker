@@ -1,0 +1,865 @@
+<title>Gyroid Maker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one settings column beside a large 3D stage; stacks to a single column on phones. */
+:root {
+  --bg: #E9EEEE;
+  --panel: #F7F9F9;
+  --ink: #0F1D1D;
+  --muted: #566867;
+  --line: #C9D4D3;
+  --accent: #F0A500;
+  --accent-ink: #1B1300;
+  --accent-soft: #FBE8B9;
+  --stage: #DCE4E4;
+  --gridline: #BFCBCB;
+  --model: #D98B00;
+  --model-shadow: #5E3A06;
+  --warn: #8A5200;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B1213; --panel: #121C1D; --ink: #E6EEEE; --muted: #8DA1A0; --line: #243334;
+    --accent: #F5B02A; --accent-ink: #1B1300; --accent-soft: #3A2C0B;
+    --stage: #081011; --gridline: #223233; --model: #F2A93B; --model-shadow: #6B3F05; --warn: #E8B04A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B1213; --panel: #121C1D; --ink: #E6EEEE; --muted: #8DA1A0; --line: #243334;
+  --accent: #F5B02A; --accent-ink: #1B1300; --accent-soft: #3A2C0B;
+  --stage: #081011; --gridline: #223233; --model: #F2A93B; --model-shadow: #6B3F05; --warn: #E8B04A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-block: 28px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.app { max-width: 1160px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.eyebrow { margin: 0; font: 500 12px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 8px 0 6px; font: 700 clamp(30px, 5vw, 46px)/1.02 var(--f-display); letter-spacing: -.02em; text-wrap: balance; }
+.lede { margin: 0; max-width: 60ch; color: var(--muted); }
+.work { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+legend, .lbl { font: 500 12px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 0; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { text-align: center; padding: 10px 6px; font-weight: 600; cursor: pointer; border-left: 1px solid var(--line); user-select: none; }
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + label { outline: 2px solid var(--ink); outline-offset: -3px; }
+.uprow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.uprow .btn-quiet { width: 100%; font-size: 13px; padding: 9px 8px; }
+.stage.drag { outline: 2px dashed var(--accent); outline-offset: -8px; }
+.mode-hint { margin: 10px 0 0; color: var(--muted); font-size: 13.5px; min-height: 2.9em; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.numwrap { display: flex; align-items: baseline; gap: 6px; }
+input[type="number"] {
+  width: 92px; padding: 7px 9px; font: 500 15px var(--f-mono); text-align: right;
+  color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+}
+input[type="number"]:focus-visible, select:focus-visible, button:focus-visible, input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.unit { font: 400 13px var(--f-mono); color: var(--muted); }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.hint { margin: 0; font-size: 13px; color: var(--muted); }
+.repeats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.repeats label { display: flex; flex-direction: column; gap: 4px; font: 400 12px var(--f-mono); color: var(--muted); }
+.repeats input[type="number"] { width: 100%; text-align: center; }
+select {
+  width: 100%; margin-top: 10px; padding: 9px 10px; font: 500 14px var(--f-body);
+  color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+}
+.btn {
+  appearance: none; border: 0; cursor: pointer; border-radius: 8px;
+  background: var(--accent); color: var(--accent-ink);
+  font: 700 16px var(--f-display); padding: 13px 16px; width: 100%;
+}
+.btn:hover:not(:disabled) { filter: brightness(1.06); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn-quiet { background: transparent; color: var(--ink); border: 1px solid var(--line); font: 600 14px var(--f-body); padding: 9px 12px; width: auto; }
+.status { margin: 0; min-height: 1.4em; font-size: 13px; color: var(--muted); }
+.note { margin: 0; padding: 9px 11px; border-radius: 6px; background: var(--accent-soft); color: var(--warn); font-size: 13px; }
+.stage-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; height: clamp(360px, 62vh, 640px); }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.chip { position: absolute; font: 400 12px var(--f-mono); color: var(--muted); background: color-mix(in srgb, var(--panel) 82%, transparent); padding: 4px 8px; border-radius: 5px; pointer-events: none; }
+.chip.tl { top: 10px; left: 10px; } .chip.bl { bottom: 10px; left: 10px; } .chip.br { bottom: 10px; right: 10px; }
+.chip.busy { color: var(--ink); }
+.nogl { padding: 24px; color: var(--muted); }
+.stagemsg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--ink); font: 600 17px/1.4 var(--f-display); pointer-events: none; text-wrap: balance; }
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0; }
+.readout div { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+.readout dt { font: 500 11px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.readout dd { margin: 0; font: 500 15px var(--f-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.readout dd small { display: block; font: 400 12px var(--f-mono); color: var(--muted); margin-top: 2px; }
+.foot { margin: 0; color: var(--muted); font-size: 13px; max-width: 80ch; }
+@media (max-width: 860px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .stage { height: min(78vw, 480px); min-height: 300px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<main class="app">
+  <header>
+    <p class="eyebrow">Aye! Lit Innovations!</p>
+    <h1>Gyroid Maker</h1>
+    <p class="lede">Choose a shape, or upload your own model to fill it with gyroid. Set the size and wall thickness, then download a file that is ready to slice.</p>
+  </header>
+
+  <div class="work">
+    <section class="panel" aria-label="Settings">
+      <fieldset>
+        <legend>Shape</legend>
+        <div class="seg" role="radiogroup" aria-label="Shape">
+          <input type="radio" name="mode" id="mode-patch" value="patch" checked><label for="mode-patch">Patch</label>
+          <input type="radio" name="mode" id="mode-cube" value="cube"><label for="mode-cube">Cube</label>
+          <input type="radio" name="mode" id="mode-cell" value="cell"><label for="mode-cell">Cell</label>
+          <input type="radio" name="mode" id="mode-model" value="model"><label for="mode-model">Upload</label>
+        </div>
+        <p class="mode-hint" id="modeHint"></p>
+      </fieldset>
+
+      <fieldset id="uploadBox" hidden>
+        <legend>Your model</legend>
+        <input type="file" id="fileIn" accept=".stl,.obj,model/stl,text/plain" hidden>
+        <div class="uprow">
+          <button class="btn btn-quiet" id="pick" type="button">Choose STL or OBJ…</button>
+          <button class="btn btn-quiet" id="sample" type="button">Use sample snowman</button>
+        </div>
+        <p class="hint" id="modelInfo" style="margin-top:10px">You can also drop a file onto the preview.</p>
+        <label class="lbl" for="upAxis" style="display:block;margin-top:14px">Which way is up?</label>
+        <select id="upAxis"><option value="z" selected>Z is up (STL, CAD)</option><option value="y">Y is up (many OBJ files)</option></select>
+      </fieldset>
+
+      <div class="field">
+        <div class="field-head"><label class="lbl" for="size" id="sizeLabel">Patch size</label>
+          <span class="numwrap"><input type="number" id="size" inputmode="decimal" step="1"><span class="unit">mm</span></span></div>
+        <input type="range" id="sizeRange" aria-labelledby="sizeLabel">
+        <p class="hint" id="sizeHint"></p>
+      </div>
+
+      <div class="field" id="cellField" hidden>
+        <div class="field-head"><label class="lbl" for="cellSize" id="cellLabel">Gyroid cell size</label>
+          <span class="numwrap"><input type="number" id="cellSize" inputmode="decimal" step="1"><span class="unit">mm</span></span></div>
+        <input type="range" id="cellRange" aria-labelledby="cellLabel">
+        <p class="hint" id="cellHint">Size of one repeat of the pattern. Smaller cells give a finer lattice and a heavier file.</p>
+      </div>
+
+      <div class="field">
+        <div class="field-head"><label class="lbl" for="thick" id="thickLabel">Wall thickness</label>
+          <span class="numwrap"><input type="number" id="thick" inputmode="decimal" step="0.1"><span class="unit">mm</span></span></div>
+        <input type="range" id="thickRange" aria-labelledby="thickLabel">
+        <p class="hint" id="thickHint"></p>
+      </div>
+
+      <fieldset id="repeatBox" hidden>
+        <legend>Cells to make</legend>
+        <div class="repeats">
+          <label for="nx">Across X<input type="number" id="nx" min="1" max="6" step="1" value="1" inputmode="numeric"></label>
+          <label for="ny">Across Y<input type="number" id="ny" min="1" max="6" step="1" value="1" inputmode="numeric"></label>
+          <label for="nz">Across Z<input type="number" id="nz" min="1" max="6" step="1" value="1" inputmode="numeric"></label>
+        </div>
+        <p class="hint" id="repeatHint" style="margin-top:10px"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend><label for="quality">Detail</label></legend>
+        <select id="quality">
+          <option value="draft">Draft (fast, rougher walls)</option>
+          <option value="standard" selected>Standard</option>
+          <option value="fine">Fine (large files)</option>
+        </select>
+      </fieldset>
+
+      <p class="note" id="note" hidden></p>
+      <fieldset>
+        <legend><label for="format">File type</label></legend>
+        <select id="format">
+          <option value="stl" selected>STL</option>
+          <option value="3mf">3MF</option>
+          <option value="obj">OBJ</option>
+        </select>
+        <p class="hint" id="fmtHint" style="margin-top:8px"></p>
+      </fieldset>
+      <div>
+        <button class="btn" id="download" disabled>Download STL</button>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="stage-col" aria-label="Preview">
+      <div class="stage" id="stage">
+        <canvas id="gl" tabindex="0" aria-label="3D preview. Drag to rotate, scroll to zoom, arrow keys also rotate."></canvas>
+        <div class="stagemsg" id="stageMsg" hidden></div>
+        <span class="chip tl busy" id="busy" hidden>Building…</span>
+        <span class="chip bl" id="gridChip"></span>
+        <span class="chip br">Drag to rotate · scroll to zoom</span>
+      </div>
+      <dl class="readout">
+        <div><dt>Overall size</dt><dd id="rSize">–</dd></div>
+        <div><dt>Solid volume</dt><dd id="rVol">–<small id="rMass"></small></dd></div>
+        <div><dt>Mesh</dt><dd id="rMesh">–<small id="rVox"></small></dd></div>
+      </dl>
+      <button class="btn btn-quiet" id="resetView" style="align-self:flex-start">Reset view</button>
+    </section>
+  </div>
+
+  <p class="foot">The surface is cos x · sin y + cos y · sin z + cos z · sin x = 0. A patch is one sixth of the cube around a gyroid's center point, six patches make a cube, and a cell is one full repeat of the pattern. Cells tile with no gaps, so printed copies can be stacked or joined edge to edge. The weight estimate assumes 100% infill PLA.</p>
+</main>
+
+<script>
+/*__MESHER__*/
+
+(function () {
+  'use strict';
+  var MODES = {
+    patch: { label: 'Patch size', min: 5, max: 100, step: 1, period: function (s) { return 4 * s; },
+      hint: 'One building block of the gyroid: a four-sided pyramid of surface, thickened into a wall.',
+      sizeHint: 'Apex to base. The base is twice as wide.' },
+    cube: { label: 'Cube size', min: 10, max: 150, step: 1, period: function (s) { return 2 * s; },
+      hint: 'Six patches joined at the center point, filling a cube.',
+      sizeHint: 'Edge length of the cube.' },
+    cell: { label: 'Cell size', min: 10, max: 100, step: 1, period: function (s) { return s; },
+      hint: 'A full repeat of the gyroid pattern. Make more than one to get a larger lattice block.',
+      sizeHint: 'Edge length of one cell.' },
+    model: { label: 'Model size', min: 10, max: 300, step: 1, period: function () { return state.cellSize; },
+      hint: 'Upload an STL or OBJ and get that shape filled with a gyroid lattice, cut cleanly along the model\'s outer surface.',
+      sizeHint: 'Longest side of your model after scaling.' }
+  };
+  var state = { mode: 'patch', sizes: { patch: 20, cube: 40, cell: 40, model: 60 }, cellSize: 12, cellAuto: true, upAxis: 'z', thickness: 2, nx: 1, ny: 1, nz: 1, quality: 'standard', format: 'stl' };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    size: $('size'), sizeRange: $('sizeRange'), sizeLabel: $('sizeLabel'), sizeHint: $('sizeHint'),
+    thick: $('thick'), thickRange: $('thickRange'), thickHint: $('thickHint'),
+    nx: $('nx'), ny: $('ny'), nz: $('nz'), repeatBox: $('repeatBox'), quality: $('quality'),
+    modeHint: $('modeHint'), note: $('note'), download: $('download'), status: $('status'),
+    busy: $('busy'), gridChip: $('gridChip'), rSize: $('rSize'), rVol: $('rVol'), rMass: $('rMass'), rMesh: $('rMesh'), rVox: $('rVox'),
+    stage: $('stage'), canvas: $('gl'), reset: $('resetView'), format: $('format'), fmtHint: $('fmtHint'), stageMsg: $('stageMsg'), repeatHint: $('repeatHint'),
+    uploadBox: $('uploadBox'), fileIn: $('fileIn'), pick: $('pick'), sample: $('sample'), modelInfo: $('modelInfo'), upAxis: $('upAxis'),
+    cellField: $('cellField'), cellSize: $('cellSize'), cellRange: $('cellRange')
+  };
+
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function r1(v) { return Math.round(v * 10) / 10; }
+  function maxThickness() {
+    var m = MODES[state.mode], s = state.sizes[state.mode], cap = 0.15 * m.period(s);
+    if (state.mode === 'patch') cap = Math.min(cap, 0.5 * s); // offsetting by more than the surface curvature would fold it over
+    return r1(Math.max(0.4, cap));
+  }
+  function fmt(n, d) { return Number(n).toLocaleString(undefined, { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+
+  /* ---------------- controls ---------------- */
+  var notes = {};
+  function showNotes() {
+    var msgs = Object.keys(notes).map(function (k) { return notes[k]; }).filter(Boolean);
+    el.note.hidden = msgs.length === 0;
+    el.note.textContent = msgs.join(' ');
+  }
+  function syncControls() {
+    var m = MODES[state.mode], s = state.sizes[state.mode];
+    el.sizeLabel.textContent = m.label;
+    el.size.min = m.min; el.size.max = m.max; el.size.step = m.step; el.size.value = s;
+    el.sizeRange.min = m.min; el.sizeRange.max = m.max; el.sizeRange.step = m.step; el.sizeRange.value = s;
+    el.sizeHint.textContent = m.sizeHint;
+    el.modeHint.textContent = m.hint;
+    el.repeatBox.hidden = state.mode !== 'cell';
+    el.uploadBox.hidden = state.mode !== 'model';
+    el.cellField.hidden = state.mode !== 'model';
+    el.cellSize.min = 4; el.cellSize.max = 60; el.cellSize.value = state.cellSize;
+    el.cellRange.min = 4; el.cellRange.max = 60; el.cellRange.step = 1; el.cellRange.value = state.cellSize;
+    var tmax = maxThickness();
+    if (state.thickness > tmax) { state.thickness = tmax; notes.thick = 'Wall thickness was reduced to ' + tmax + ' mm, the most this size can hold before the channels close up.'; }
+    else { notes.thick = ''; }
+    el.thick.min = 0.2; el.thick.max = tmax; el.thick.value = state.thickness;
+    el.thickRange.min = 0.2; el.thickRange.max = tmax; el.thickRange.step = 0.1; el.thickRange.value = state.thickness;
+    el.thickHint.textContent = 'Between 0.2 and ' + tmax + ' mm at this size. A common FDM wall is 1.2 mm or more.';
+    el.nx.value = state.nx; el.ny.value = state.ny; el.nz.value = state.nz;
+    showNotes();
+  }
+
+  var timer = null;
+  function schedule(delay) { clearTimeout(timer); timer = setTimeout(rebuild, delay == null ? 160 : delay); }
+
+  function onSize(src, commit) {
+    var m = MODES[state.mode], v = parseFloat(src.value);
+    if (!isFinite(v)) return;
+    if (commit || src === el.sizeRange) v = clamp(v, m.min, m.max);
+    if (v < m.min || v > m.max) return;
+    state.sizes[state.mode] = v;
+    if (state.mode === 'model' && state.cellAuto) { state.cellSize = clamp(Math.round(v / 5), 4, 60); el.cellSize.value = state.cellSize; el.cellRange.value = state.cellSize; }
+    if (src !== el.size) el.size.value = v;
+    if (src !== el.sizeRange) el.sizeRange.value = v;
+    var tmax = maxThickness();
+    if (state.thickness > tmax) { syncControls(); }
+    else { el.thick.max = tmax; el.thickRange.max = tmax; el.thickHint.textContent = 'Between 0.2 and ' + tmax + ' mm at this size. A common FDM wall is 1.2 mm or more.'; }
+    schedule();
+  }
+  function onThick(src, commit) {
+    var v = parseFloat(src.value), tmax = maxThickness();
+    if (!isFinite(v)) return;
+    if (commit || src === el.thickRange) v = clamp(v, 0.2, tmax);
+    if (v < 0.2 || v > tmax) return;
+    state.thickness = v; notes.thick = ''; showNotes();
+    if (src !== el.thick) el.thick.value = v;
+    if (src !== el.thickRange) el.thickRange.value = v;
+    schedule();
+  }
+  function onRepeat(key) {
+    var v = parseInt(el[key].value, 10);
+    if (!isFinite(v)) return;
+    state[key] = clamp(v, 1, 6);
+    schedule();
+  }
+  el.size.addEventListener('input', function () { onSize(el.size, false); });
+  el.size.addEventListener('change', function () { onSize(el.size, true); el.size.value = state.sizes[state.mode]; });
+  el.sizeRange.addEventListener('input', function () { onSize(el.sizeRange, false); });
+  el.thick.addEventListener('input', function () { onThick(el.thick, false); });
+  el.thick.addEventListener('change', function () { onThick(el.thick, true); el.thick.value = state.thickness; });
+  el.thickRange.addEventListener('input', function () { onThick(el.thickRange, false); });
+  ['nx', 'ny', 'nz'].forEach(function (k) {
+    el[k].addEventListener('input', function () { onRepeat(k); });
+    el[k].addEventListener('change', function () { onRepeat(k); el[k].value = state[k]; });
+  });
+  function onCell(src, commit) {
+    var v = parseFloat(src.value);
+    if (!isFinite(v)) return;
+    if (commit || src === el.cellRange) v = clamp(v, 4, 60);
+    if (v < 4 || v > 60) return;
+    state.cellSize = v; state.cellAuto = false;
+    if (src !== el.cellSize) el.cellSize.value = v;
+    if (src !== el.cellRange) el.cellRange.value = v;
+    var tmax = maxThickness();
+    if (state.thickness > tmax) syncControls();
+    else { el.thick.max = tmax; el.thickRange.max = tmax; el.thickHint.textContent = 'Between 0.2 and ' + tmax + ' mm at this size. A common FDM wall is 1.2 mm or more.'; }
+    schedule();
+  }
+  el.cellSize.addEventListener('input', function () { onCell(el.cellSize, false); });
+  el.cellSize.addEventListener('change', function () { onCell(el.cellSize, true); el.cellSize.value = state.cellSize; });
+  el.cellRange.addEventListener('input', function () { onCell(el.cellRange, false); });
+  el.upAxis.addEventListener('change', function () { state.upAxis = el.upAxis.value; schedule(0); });
+  el.quality.addEventListener('change', function () { state.quality = el.quality.value; schedule(0); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="mode"]'), function (r) {
+    r.addEventListener('change', function () {
+      if (!r.checked) return;
+      state.mode = r.value; syncControls();
+      if (state.mode === 'model' && !userModel) loadSample();
+      schedule(0);
+    });
+  });
+
+  /* ---------------- meshing (worker with a main-thread fallback) ---------------- */
+  var workerUrl = null, worker = null, useWorker = typeof Worker !== 'undefined' && typeof Blob !== 'undefined';
+  var jobId = 0, mesh = null, lastFit = '';
+  var workerSrc = meshGyroid.toString() +
+    ';self.onmessage=function(e){var r=meshGyroid(e.data.params);self.postMessage({id:e.data.id,result:r},[r.positions.buffer,r.normals.buffer,r.indices.buffer,r.canon.buffer]);};';
+
+  function currentParams() {
+    if (state.mode === 'model') {
+      return { mode: 'model', size: state.sizes.model, cellSize: state.cellSize, thickness: state.thickness, quality: state.quality, modelName: userModel ? userModel.name : '', model: userModel ? { positions: orientModel(userModel.positions, state.upAxis) } : null };
+    }
+    return { mode: state.mode, size: state.sizes[state.mode], thickness: state.thickness, nx: state.nx, ny: state.ny, nz: state.nz, quality: state.quality };
+  }
+  function rebuild() {
+    var params = currentParams(), id = ++jobId;
+    if (state.mode === 'model' && !userModel) {
+      mesh = null; idxCount = 0; dirty = true; requestDraw(); el.busy.hidden = true; el.download.disabled = true;
+      el.stageMsg.textContent = 'Choose an STL or OBJ file, or drop one here'; el.stageMsg.hidden = false;
+      el.rSize.textContent = '–'; el.rVol.firstChild.nodeValue = '–'; el.rMass.textContent = ''; el.rMesh.firstChild.nodeValue = '–'; el.rVox.textContent = '';
+      return;
+    }
+    el.busy.hidden = false; el.download.disabled = true;
+    function sync() { setTimeout(function () { var r; try { r = meshGyroid(params); } catch (e) { r = null; } done(id, r, params); }, 20); }
+    if (!useWorker) { sync(); return; }
+    try {
+      if (worker) { worker.terminate(); worker = null; }
+      if (!workerUrl) workerUrl = URL.createObjectURL(new Blob([workerSrc], { type: 'text/javascript' }));
+      worker = new Worker(workerUrl);
+      worker.onmessage = function (e) { done(e.data.id, e.data.result, params); };
+      worker.onerror = function () { useWorker = false; worker = null; sync(); };
+      worker.postMessage({ id: id, params: params });
+    } catch (err) { useWorker = false; sync(); }
+  }
+  function done(id, r, params) {
+    if (id !== jobId) return;
+    el.busy.hidden = true;
+    if (r && r.tooBig) {
+      mesh = null; idxCount = 0; dirty = true; requestDraw();
+      if (params.mode === 'model') {
+        var ms = Math.max(1, Math.floor(r.maxSize));
+        notes.mesh = 'Too big to build with a ' + r1(params.cellSize) + ' mm cell and a ' + r1(params.thickness) + ' mm wall. At these settings the model can be up to about ' + ms + ' mm on its longest side. Try a larger cell, a thicker wall, or a smaller model.';
+        el.stageMsg.textContent = 'Too big to build at these settings'; el.stageMsg.hidden = false; showNotes();
+        mesh = null; idxCount = 0; dirty = true; requestDraw();
+        el.rSize.textContent = '–'; el.rVol.firstChild.nodeValue = '–'; el.rMass.textContent = ''; el.rMesh.firstChild.nodeValue = '–'; el.rVox.textContent = '';
+        el.download.disabled = true; el.status.textContent = '';
+        return;
+      }
+      var cap = Math.max(1, r.maxCells), edge = Math.max(1, Math.floor(Math.cbrt(cap)));
+      var msg = 'Too big to build at a ' + r1(params.thickness) + ' mm wall. About ' + cap + (cap === 1 ? ' cell' : ' cells') + ' fit here' + (cap >= 8 ? ', for example ' + edge + '×' + edge + '×' + edge : '') + '. Try fewer cells or a thicker wall.';
+      el.stageMsg.textContent = 'Too big to build at this wall thickness'; el.stageMsg.hidden = false;
+      notes.mesh = msg; showNotes();
+      el.rSize.textContent = '–'; el.rVol.firstChild.nodeValue = '–'; el.rMass.textContent = ''; el.rMesh.firstChild.nodeValue = '–'; el.rVox.textContent = '';
+      el.download.disabled = true; el.status.textContent = '';
+      return;
+    }
+    el.stageMsg.hidden = true;
+    if (!r || !r.triangles) { mesh = null; el.status.textContent = 'Nothing to show at these settings.'; return; }
+    var pp = {}; for (var pk in params) if (pk !== 'model') pp[pk] = params[pk];
+    mesh = r; mesh.params = pp; params = pp;
+    var key = [params.mode, params.size, params.nx, params.ny, params.nz, params.modelName].join('|');
+    uploadMesh(r, key !== lastFit); lastFit = key;
+    updateReadout(r, params);
+    el.download.disabled = false;
+    el.status.textContent = '';
+  }
+  function updateReadout(r, p) {
+    el.rSize.textContent = r.size.map(function (v) { return fmt(v, 1); }).join(' × ') + ' mm';
+    var cm3 = r.volume / 1000;
+    el.rVol.firstChild.nodeValue = fmt(cm3, cm3 < 10 ? 2 : 1) + ' cm³';
+    el.rMass.textContent = '≈ ' + fmt(cm3 * 1.24, cm3 * 1.24 < 10 ? 1 : 0) + ' g in PLA, solid';
+    var mb = (84 + r.triangles * 50) / 1048576;
+    el.rMesh.firstChild.nodeValue = fmt(r.triangles) + ' triangles';
+    el.rVox.textContent = 'STL ' + fmt(mb, mb < 10 ? 1 : 0) + ' MB · detail ' + fmt(r.voxel, 2) + ' mm';
+    notes.mesh = '';
+    el.repeatHint.textContent = (p.mode === 'cell' && r.maxCells > 0 && r.maxCells < 216) ? 'At this size and wall, about ' + r.maxCells + ' cells fit in one file.' : '';
+    if (mb > 120) notes.mesh = 'This file is very large. Slicers may be slow with it. Fewer cells or Draft detail makes it lighter.';
+    showNotes();
+  }
+
+  /* ---------------- STL + zip ---------------- */
+  function buildSTL(m) {
+    var P = m.positions, I = m.indices, n = I.length / 3;
+    var buf = new ArrayBuffer(84 + n * 50), dv = new DataView(buf);
+    var head = 'Gyroid Maker - Aye! Lit Innovations!';
+    for (var h = 0; h < head.length; h++) dv.setUint8(h, head.charCodeAt(h));
+    dv.setUint32(80, n, true);
+    var o = 84;
+    for (var f = 0; f < n; f++) {
+      var a = I[f * 3] * 3, b = I[f * 3 + 1] * 3, c = I[f * 3 + 2] * 3;
+      var ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2];
+      var vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
+      var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      var l = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+      dv.setFloat32(o, nx / l, true); dv.setFloat32(o + 4, ny / l, true); dv.setFloat32(o + 8, nz / l, true);
+      dv.setFloat32(o + 12, P[a], true); dv.setFloat32(o + 16, P[a + 1], true); dv.setFloat32(o + 20, P[a + 2], true);
+      dv.setFloat32(o + 24, P[b], true); dv.setFloat32(o + 28, P[b + 1], true); dv.setFloat32(o + 32, P[b + 2], true);
+      dv.setFloat32(o + 36, P[c], true); dv.setFloat32(o + 40, P[c + 1], true); dv.setFloat32(o + 44, P[c + 2], true);
+      dv.setUint16(o + 48, 0, true);
+      o += 50;
+    }
+    return buf;
+  }
+  function crc32(bytes) {
+    var t = crc32.t;
+    if (!t) { t = crc32.t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } }
+    var crc = 0xFFFFFFFF;
+    for (var i = 0; i < bytes.length; i++) crc = t[(crc ^ bytes[i]) & 255] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  /* Zip writer: any number of entries, stored or raw-deflated. */
+  function zipBlob(entries) {
+    var enc = new TextEncoder(), parts = [], central = [], offset = 0;
+    entries.forEach(function (e) {
+      var nb = enc.encode(e.name), crc = crc32(e.data), method = e.packed ? 8 : 0, body = e.packed || e.data;
+      var lh = new Uint8Array(30 + nb.length), dv = new DataView(lh.buffer);
+      dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true); dv.setUint16(6, 0x0800, true); dv.setUint16(8, method, true);
+      dv.setUint16(10, 0, true); dv.setUint16(12, 33, true); dv.setUint32(14, crc, true);
+      dv.setUint32(18, body.length, true); dv.setUint32(22, e.data.length, true); dv.setUint16(26, nb.length, true); dv.setUint16(28, 0, true);
+      lh.set(nb, 30);
+      var ch = new Uint8Array(46 + nb.length), cv = new DataView(ch.buffer);
+      cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true); cv.setUint16(10, method, true);
+      cv.setUint16(12, 0, true); cv.setUint16(14, 33, true); cv.setUint32(16, crc, true);
+      cv.setUint32(20, body.length, true); cv.setUint32(24, e.data.length, true); cv.setUint16(28, nb.length, true); cv.setUint32(42, offset, true);
+      ch.set(nb, 46);
+      parts.push(lh, body); central.push(ch); offset += lh.length + body.length;
+    });
+    var cdSize = central.reduce(function (s, c) { return s + c.length; }, 0), end = new Uint8Array(22), ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, entries.length, true); ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+  }
+  function deflateRaw(data) {
+    if (typeof CompressionStream === 'undefined') return Promise.resolve(null);
+    try {
+      return new Response(new Blob([data]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()
+        .then(function (b) { return new Uint8Array(b); }, function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+  function packEntry(name, data) { return deflateRaw(data).then(function (p) { return { name: name, data: data, packed: p }; }); }
+
+  /* Indexed meshes (OBJ, 3MF) need shared vertices: merge the shading copies back and drop unused ones. */
+  function welded(m) {
+    var P = m.positions, I = m.indices, canon = m.canon, map = new Int32Array(P.length / 3).fill(-1), n = 0, i, out = new Uint32Array(I.length);
+    for (i = 0; i < I.length; i++) { var c = canon[I[i]]; if (map[c] < 0) map[c] = n++; out[i] = map[c]; }
+    var pos = new Float32Array(n * 3);
+    for (i = 0; i < map.length; i++) if (map[i] >= 0) { pos[map[i] * 3] = P[i * 3]; pos[map[i] * 3 + 1] = P[i * 3 + 1]; pos[map[i] * 3 + 2] = P[i * 3 + 2]; }
+    return { pos: pos, idx: out, nv: n };
+  }
+  function buildOBJ(m, title) {
+    var w = welded(m), L = ['# ' + title, '# units: millimetres', 'o gyroid'], i;
+    for (i = 0; i < w.nv; i++) L.push('v ' + w.pos[i*3].toFixed(4) + ' ' + w.pos[i*3+1].toFixed(4) + ' ' + w.pos[i*3+2].toFixed(4));
+    for (i = 0; i < w.idx.length; i += 3) L.push('f ' + (w.idx[i] + 1) + ' ' + (w.idx[i+1] + 1) + ' ' + (w.idx[i+2] + 1));
+    return new TextEncoder().encode(L.join('\n') + '\n');
+  }
+  function build3MF(m, title) {
+    var w = welded(m), X = ['<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">',
+      '<metadata name="Title">' + title + '</metadata><metadata name="Application">Gyroid Maker</metadata>',
+      '<resources><object id="1" type="model"><mesh><vertices>'], i;
+    for (i = 0; i < w.nv; i++) X.push('<vertex x="' + w.pos[i*3].toFixed(4) + '" y="' + w.pos[i*3+1].toFixed(4) + '" z="' + w.pos[i*3+2].toFixed(4) + '"/>');
+    X.push('</vertices><triangles>');
+    for (i = 0; i < w.idx.length; i += 3) X.push('<triangle v1="' + w.idx[i] + '" v2="' + w.idx[i+1] + '" v3="' + w.idx[i+2] + '"/>');
+    X.push('</triangles></mesh></object></resources><build><item objectid="1"/></build></model>');
+    var enc = new TextEncoder();
+    var types = enc.encode('<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>');
+    var rels = enc.encode('<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>');
+    var model = enc.encode(X.join('\n'));
+    return Promise.all([packEntry('[Content_Types].xml', types), packEntry('_rels/.rels', rels), packEntry('3D/3dmodel.model', model)])
+      .then(function (es) { return zipBlob(es).arrayBuffer(); })
+      .then(function (b) { return new Uint8Array(b); });
+  }
+
+  var FORMATS = {
+    stl: { label: 'STL', hint: 'The standard for slicers. A plain triangle mesh.', mime: 'model/stl' },
+    '3mf': { label: '3MF', hint: 'A triangle mesh that remembers its units (millimetres). Opens in current slicers and Fusion 360.', mime: 'model/3mf' },
+    obj: { label: 'OBJ', hint: 'A triangle mesh that most 3D and CAD programs can import.', mime: 'model/obj' }
+  };
+  function syncFormat() {
+    var f = FORMATS[state.format];
+    el.fmtHint.textContent = f.hint + ' None of these is an editable CAD solid.';
+    el.download.textContent = 'Download ' + f.label;
+  }
+  el.format.addEventListener('change', function () { state.format = el.format.value; syncFormat(); el.status.textContent = ''; });
+
+  var dl = null;
+  try {
+    if (window.claude && typeof window.claude.use === 'function') {
+      window.claude.use('downloads').then(function (d) { dl = d || null; }, function () {});
+    }
+  } catch (e) {}
+  function fileBase(p) {
+    if (p.mode === 'model') return 'gyroid-' + (p.modelName || 'model').replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase().slice(0, 40) + '-' + p.size + 'mm-cell' + r1(p.cellSize) + '-t' + r1(p.thickness) + 'mm';
+    var s = 'gyroid-' + p.mode + '-' + p.size + 'mm';
+    if (p.mode === 'cell') s += '-' + p.nx + 'x' + p.ny + 'x' + p.nz;
+    return s + '-t' + r1(p.thickness) + 'mm';
+  }
+  function makeFile(fmt, m, base) {
+    var title = (m.params.mode === 'model' ? 'Gyroid fill of ' + (m.params.modelName || 'model') : 'Gyroid ' + m.params.mode) + ', ' + m.params.size + ' mm, wall ' + r1(m.params.thickness) + ' mm';
+    if (fmt === 'obj') return Promise.resolve(buildOBJ(m, title));
+    if (fmt === '3mf') return build3MF(m, title);
+    return Promise.resolve(new Uint8Array(buildSTL(m)));
+  }
+  el.download.addEventListener('click', function () {
+    if (!mesh) return;
+    var m = mesh, fmt = state.format, ext = fmt, base = fileBase(m.params), name = base + '.' + ext;
+    el.download.disabled = true; el.status.textContent = 'Preparing ' + FORMATS[fmt].label + '…';
+    makeFile(fmt, m, base).then(function (bytes) {
+      if (dl) {
+        // The viewer only saves certain file types, so wrap the model in a zip.
+        return packEntry(name, bytes).then(function (entry) {
+          return dl.save({ filename: base + '.zip', data: zipBlob([entry]) });
+        }).then(function () { el.status.textContent = 'Saved ' + base + '.zip (the ' + FORMATS[fmt].label + ' is inside).'; },
+          function (e) { el.status.textContent = e && e.code === 'declined' ? '' : 'The file could not be saved here.'; });
+      }
+      var a = document.createElement('a'), url = URL.createObjectURL(new Blob([bytes], { type: FORMATS[fmt].mime }));
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      el.status.textContent = 'Downloaded ' + name;
+    }).then(function () { el.download.disabled = !mesh; }, function () { el.status.textContent = 'The file could not be built.'; el.download.disabled = !mesh; });
+  });
+
+  /* ---------------- uploaded models ---------------- */
+  var userModel = null; // { name, positions: Float32Array triangle soup, dims, open, tris }
+  function orientModel(pos, up) {
+    if (up !== 'y') return pos;
+    var o = new Float32Array(pos.length); // Y up -> Z up: (x, y, z) -> (x, -z, y)
+    for (var i = 0; i < pos.length; i += 3) { o[i] = pos[i]; o[i + 1] = -pos[i + 2]; o[i + 2] = pos[i + 1]; }
+    return o;
+  }
+  function parseSTL(buf) {
+    if (buf.byteLength >= 84) {
+      var dv = new DataView(buf), n = dv.getUint32(80, true);
+      if (84 + n * 50 === buf.byteLength && n > 0) {
+        var out = new Float32Array(n * 9), o = 84;
+        for (var i = 0; i < n; i++, o += 50) for (var k = 0; k < 9; k++) out[i * 9 + k] = dv.getFloat32(o + 12 + k * 4, true);
+        return out;
+      }
+    }
+    var txt = new TextDecoder().decode(buf), re = /vertex\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)/g, m, a = [];
+    while ((m = re.exec(txt))) a.push(parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]));
+    if (a.length < 9 || a.length % 9) return null;
+    return new Float32Array(a);
+  }
+  function parseOBJ(buf) {
+    var lines = new TextDecoder().decode(buf).split(/\r?\n/), v = [], out = [];
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i];
+      if (l.charCodeAt(0) === 118 && l.charCodeAt(1) === 32) { var p = l.trim().split(/\s+/); v.push(+p[1], +p[2], +p[3]); }
+      else if (l.charCodeAt(0) === 102 && l.charCodeAt(1) === 32) {
+        var q = l.trim().split(/\s+/).slice(1), ids = [];
+        for (var j = 0; j < q.length; j++) { var x = parseInt(q[j], 10); if (!isFinite(x)) continue; ids.push(x < 0 ? v.length / 3 + x : x - 1); }
+        for (var f = 1; f + 1 < ids.length; f++) {
+          var tri = [ids[0], ids[f], ids[f + 1]];
+          for (var c = 0; c < 3; c++) out.push(v[tri[c] * 3], v[tri[c] * 3 + 1], v[tri[c] * 3 + 2]);
+        }
+      }
+    }
+    if (out.length < 9) return null;
+    for (var z = 0; z < out.length; z++) if (!isFinite(out[z])) return null;
+    return new Float32Array(out);
+  }
+  function openEdgeCount(pos) {
+    // weld by position, then count edges that are not shared by exactly two triangles
+    var n = pos.length / 3, mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity], i, c;
+    for (i = 0; i < n; i++) for (c = 0; c < 3; c++) { var x = pos[i * 3 + c]; if (x < mn[c]) mn[c] = x; if (x > mx[c]) mx[c] = x; }
+    var q = Math.max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]) / 65536 || 1, ids = new Map(), vid = new Int32Array(n), K = 65537;
+    for (i = 0; i < n; i++) {
+      var key = (Math.round((pos[i * 3] - mn[0]) / q) * K + Math.round((pos[i * 3 + 1] - mn[1]) / q)) * K + Math.round((pos[i * 3 + 2] - mn[2]) / q);
+      var id = ids.get(key); if (id === undefined) { id = ids.size; ids.set(key, id); } vid[i] = id;
+    }
+    var N = ids.size + 1, E = new Map(), open = 0;
+    for (var t = 0; t < n; t += 3) for (var e = 0; e < 3; e++) {
+      var a = vid[t + e], b = vid[t + (e + 1) % 3];
+      if (a === b) continue;
+      var k = a < b ? a * N + b : b * N + a, s = a < b ? 1 : 256, cur = E.get(k) || 0;
+      E.set(k, cur + s);
+    }
+    E.forEach(function (val) { if (val !== 257) open++; });
+    return open;
+  }
+  function setModel(name, positions) {
+    var n = positions.length / 9, lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (var i = 0; i < positions.length; i += 3) for (var c = 0; c < 3; c++) { var x = positions[i + c]; if (x < lo[c]) lo[c] = x; if (x > hi[c]) hi[c] = x; }
+    var dims = [hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]];
+    var open = openEdgeCount(positions);
+    userModel = { name: name, positions: positions, dims: dims, open: open, tris: n };
+    el.modelInfo.textContent = name + ': ' + fmt(n) + ' triangles, ' + dims.map(function (v) { return fmt(v, 1); }).join(' × ') + ' (original units).' +
+      (open ? ' This model has ' + fmt(open) + ' open edges (holes or gaps), so the fill may come out patchy. Repairing it in your CAD or slicer first will help.' : ' The surface is closed, so it can be filled.');
+    var v = Math.max(dims[0], dims[1], dims[2]);
+    if (state.mode !== 'model') { state.mode = 'model'; document.getElementById('mode-model').checked = true; }
+    syncControls(); schedule(0);
+  }
+  function loadSample() {
+    // a snowman: the outline of three overlapping balls, spun into one closed surface
+    var balls = [[0, 1.0, 1.0], [0, 2.45, 0.72], [0, 3.55, 0.5]]; // [unused, centre height, radius]
+    var zMax = 3.55 + 0.5, nz = 160, nu = 72, prof = [], i, j;
+    for (i = 0; i <= nz; i++) {
+      var z = zMax * i / nz, r = 0;
+      for (j = 0; j < 3; j++) { var d = z - balls[j][1], rr = balls[j][2] * balls[j][2] - d * d; if (rr > 0) r = Math.max(r, Math.sqrt(rr)); }
+      prof.push([r, z]);
+    }
+    var minZ = 0; prof[0] = [0, 0]; prof[nz] = [0, zMax];
+    var P = function (u, k) { return [prof[k][0] * Math.cos(u), prof[k][0] * Math.sin(u), prof[k][1]]; }, out = [];
+    for (i = 0; i < nu; i++) for (j = 0; j < nz; j++) {
+      var u0 = i / nu * 2 * Math.PI, u1 = (i + 1) / nu * 2 * Math.PI;
+      var a = P(u0, j), b = P(u1, j), c = P(u1, j + 1), d2 = P(u0, j + 1);
+      if (j > 0) out.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
+      if (j < nz - 1) out.push(a[0], a[1], a[2], c[0], c[1], c[2], d2[0], d2[1], d2[2]);
+    }
+    var pos = new Float32Array(out), sv = 0;
+    for (i = 0; i < pos.length; i += 9) sv += pos[i] * (pos[i+4] * pos[i+8] - pos[i+5] * pos[i+7]) - pos[i+1] * (pos[i+3] * pos[i+8] - pos[i+5] * pos[i+6]) + pos[i+2] * (pos[i+3] * pos[i+7] - pos[i+4] * pos[i+6]);
+    if (sv < 0) for (i = 0; i < pos.length; i += 9) for (j = 0; j < 3; j++) { var t = pos[i + 3 + j]; pos[i + 3 + j] = pos[i + 6 + j]; pos[i + 6 + j] = t; }
+    state.upAxis = 'z'; el.upAxis.value = 'z';
+    setModel('Sample snowman', pos);
+  }
+  function loadFile(file) {
+    if (!file) return;
+    if (file.size > 120 * 1048576) { el.modelInfo.textContent = 'That file is over 120 MB. Please use a lighter version of the model.'; return; }
+    el.modelInfo.textContent = 'Reading ' + file.name + '…';
+    var rd = new FileReader();
+    rd.onerror = function () { el.modelInfo.textContent = 'That file could not be read.'; };
+    rd.onload = function () {
+      var buf = rd.result, ext = (file.name.split('.').pop() || '').toLowerCase(), pos = null;
+      try { pos = ext === 'obj' ? parseOBJ(buf) : parseSTL(buf); if (!pos && ext !== 'obj' && ext !== 'stl') pos = parseOBJ(buf); } catch (e) { pos = null; }
+      if (!pos) { el.modelInfo.textContent = 'That file could not be understood. Use a binary or ASCII STL, or an OBJ with triangle or quad faces.'; return; }
+      if (pos.length / 9 > 1500000) { el.modelInfo.textContent = 'That model has ' + fmt(pos.length / 9) + ' triangles, more than the 1.5 million this tool can fill. Please decimate it first.'; return; }
+      state.cellAuto = true;
+      setModel(file.name, pos);
+      state.cellSize = clamp(Math.round(state.sizes.model / 5), 4, 60); syncControls(); schedule(0);
+    };
+    rd.readAsArrayBuffer(file);
+  }
+  el.pick.addEventListener('click', function () { el.fileIn.click(); });
+  el.fileIn.addEventListener('change', function () { loadFile(el.fileIn.files && el.fileIn.files[0]); el.fileIn.value = ''; });
+  el.sample.addEventListener('click', loadSample);
+  ['dragenter', 'dragover'].forEach(function (ev) { el.stage.addEventListener(ev, function (e) { if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0) { e.preventDefault(); el.stage.classList.add('drag'); } }); });
+  ['dragleave', 'drop'].forEach(function (ev) { el.stage.addEventListener(ev, function () { el.stage.classList.remove('drag'); }); });
+  el.stage.addEventListener('drop', function (e) { e.preventDefault(); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) loadFile(f); });
+
+  /* ---------------- WebGL preview ---------------- */
+  var gl = null, progM = null, progG = null, bufP, bufN, bufI, bufGrid, idxCount = 0, gridCount = 0, soup = false, hasUint = false;
+  var cam = { yaw: 0.7, pitch: 0.5, dist: 100, fit: 100, target: [0, 0, 10] };
+  var dirty = true;
+
+  function sh(type, src) { var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
+  function prog(vs, fs) { var p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p); return p; }
+  function initGL() {
+    var opts = { antialias: true, alpha: false };
+    gl = el.canvas.getContext('webgl', opts) || el.canvas.getContext('experimental-webgl', opts);
+    if (!gl) { el.stage.insertAdjacentHTML('beforeend', '<div class="nogl">The 3D preview needs WebGL, which this browser has turned off. You can still download the STL.</div>'); return; }
+    hasUint = !!gl.getExtension('OES_element_index_uint');
+    progM = prog(
+      'attribute vec3 aPos;attribute vec3 aNrm;uniform mat4 uMVP;uniform mat3 uNM;varying vec3 vN;void main(){vN=uNM*aNrm;gl_Position=uMVP*vec4(aPos,1.0);}',
+      'precision mediump float;varying vec3 vN;uniform vec3 uColor;uniform vec3 uShadow;void main(){' +
+      'vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;' +
+      'vec3 l1=normalize(vec3(-0.40,0.60,0.70));vec3 l2=normalize(vec3(0.65,-0.25,0.45));' +
+      'float d1=max(dot(n,l1),0.0);float d2=max(dot(n,l2),0.0);' +
+      'vec3 h=normalize(l1+vec3(0.0,0.0,1.0));float sp=pow(max(dot(n,h),0.0),36.0);' +
+      'vec3 c=mix(uShadow,uColor,clamp(0.22+0.72*d1+0.22*d2,0.0,1.0))+0.18*sp;gl_FragColor=vec4(c,1.0);}');
+    progG = prog('attribute vec3 aPos;uniform mat4 uMVP;void main(){gl_Position=uMVP*vec4(aPos,1.0);}',
+      'precision mediump float;uniform vec3 uCol;void main(){gl_FragColor=vec4(uCol,1.0);}');
+    bufP = gl.createBuffer(); bufN = gl.createBuffer(); bufI = gl.createBuffer(); bufGrid = gl.createBuffer();
+    gl.enable(gl.DEPTH_TEST);
+  }
+  function hexRGB(name, fallback) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    var m = /^#([0-9a-f]{6})$/i.exec(v);
+    if (!m) return fallback;
+    var n = parseInt(m[1], 16);
+    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+  }
+  function uploadMesh(r, refit) {
+    if (!gl) return;
+    var pos = r.positions, nrm = r.normals;
+    soup = !hasUint && r.vertices > 65000;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufP);
+    if (soup) {
+      var I = r.indices, P2 = new Float32Array(I.length * 3), N2 = new Float32Array(I.length * 3);
+      for (var i = 0; i < I.length; i++) { for (var c = 0; c < 3; c++) { P2[i * 3 + c] = pos[I[i] * 3 + c]; N2[i * 3 + c] = nrm[I[i] * 3 + c]; } }
+      gl.bufferData(gl.ARRAY_BUFFER, P2, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufN); gl.bufferData(gl.ARRAY_BUFFER, N2, gl.STATIC_DRAW);
+      idxCount = I.length;
+    } else {
+      gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufN); gl.bufferData(gl.ARRAY_BUFFER, nrm, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufI);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, hasUint ? r.indices : new Uint16Array(r.indices), gl.STATIC_DRAW);
+      idxCount = r.indices.length;
+    }
+    // floor grid in fixed millimetres
+    var sx = r.size[0], sy = r.size[1], ext = Math.max(sx, sy);
+    var steps = [5, 10, 20, 25, 50, 100], sp = 10;
+    for (var s = 0; s < steps.length; s++) { sp = steps[s]; if (ext / sp <= 12) break; }
+    var half = Math.ceil((ext / 2 + sp) / sp) * sp, lines = [], z = -0.02;
+    for (var g = -half; g <= half + 1e-6; g += sp) {
+      lines.push(g, -half, z, g, half, z, -half, g, z, half, g, z);
+    }
+    gridCount = lines.length / 3;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufGrid); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), gl.STATIC_DRAW);
+    el.gridChip.textContent = 'Floor grid: ' + sp + ' mm squares';
+    cam.target = [0, 0, r.size[2] / 2];
+    var rad = 0.5 * Math.sqrt(r.size[0] * r.size[0] + r.size[1] * r.size[1] + r.size[2] * r.size[2]);
+    cam.radius = rad;
+    if (refit) { cam.fit = fitDistance(rad); cam.dist = cam.fit; }
+    dirty = true; requestDraw();
+  }
+  function fitDistance(rad) {
+    var fov = 36 * Math.PI / 180, a = el.canvas.clientWidth / Math.max(1, el.canvas.clientHeight);
+    var half = Math.atan(Math.tan(fov / 2) * Math.min(1, a));
+    return rad / Math.sin(half) * 1.2;
+  }
+  function mul(a, b) { var o = new Float32Array(16); for (var c = 0; c < 4; c++) for (var r = 0; r < 4; r++) { var s = 0; for (var k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; o[c * 4 + r] = s; } return o; }
+  function perspective(f, a, n, fa) { var t = 1 / Math.tan(f / 2), o = new Float32Array(16); o[0] = t / a; o[5] = t; o[10] = (fa + n) / (n - fa); o[11] = -1; o[14] = 2 * fa * n / (n - fa); return o; }
+  function lookAt(e, c, u) {
+    var z = [e[0] - c[0], e[1] - c[1], e[2] - c[2]], l = Math.hypot(z[0], z[1], z[2]); z = [z[0] / l, z[1] / l, z[2] / l];
+    var x = [u[1] * z[2] - u[2] * z[1], u[2] * z[0] - u[0] * z[2], u[0] * z[1] - u[1] * z[0]]; l = Math.hypot(x[0], x[1], x[2]); x = [x[0] / l, x[1] / l, x[2] / l];
+    var y = [z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0]];
+    var d = function (a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+    return new Float32Array([x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -d(x, e), -d(y, e), -d(z, e), 1]);
+  }
+  var drawQueued = false;
+  function requestDraw() { if (drawQueued) return; drawQueued = true; requestAnimationFrame(function () { drawQueued = false; draw(); }); }
+  function resize() {
+    if (!gl) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), w = Math.max(1, Math.floor(el.canvas.clientWidth * dpr)), h = Math.max(1, Math.floor(el.canvas.clientHeight * dpr));
+    if (el.canvas.width !== w || el.canvas.height !== h) { el.canvas.width = w; el.canvas.height = h; }
+    requestDraw();
+  }
+  function draw() {
+    if (!gl) return;
+    var stage = hexRGB('--stage', [0.86, 0.89, 0.89]);
+    gl.viewport(0, 0, el.canvas.width, el.canvas.height);
+    gl.clearColor(stage[0], stage[1], stage[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    if (!idxCount) return;
+    var cp = Math.cos(cam.pitch), eye = [cam.target[0] + cam.dist * cp * Math.cos(cam.yaw), cam.target[1] + cam.dist * cp * Math.sin(cam.yaw), cam.target[2] + cam.dist * Math.sin(cam.pitch)];
+    var V = lookAt(eye, cam.target, [0, 0, 1]);
+    var Pm = perspective(36 * Math.PI / 180, el.canvas.width / el.canvas.height, cam.dist * 0.04, cam.dist * 12);
+    var MVP = mul(Pm, V);
+    // grid
+    gl.useProgram(progG);
+    var col = hexRGB('--gridline', [0.5, 0.5, 0.5]);
+    gl.uniformMatrix4fv(gl.getUniformLocation(progG, 'uMVP'), false, MVP);
+    gl.uniform3f(gl.getUniformLocation(progG, 'uCol'), col[0], col[1], col[2]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufGrid);
+    var ag = gl.getAttribLocation(progG, 'aPos'); gl.enableVertexAttribArray(ag); gl.vertexAttribPointer(ag, 3, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.LINES, 0, gridCount);
+    // model
+    gl.useProgram(progM);
+    gl.uniformMatrix4fv(gl.getUniformLocation(progM, 'uMVP'), false, MVP);
+    gl.uniformMatrix3fv(gl.getUniformLocation(progM, 'uNM'), false, new Float32Array([V[0], V[1], V[2], V[4], V[5], V[6], V[8], V[9], V[10]]));
+    var mc = hexRGB('--model', [0.85, 0.55, 0]), ms = hexRGB('--model-shadow', [0.37, 0.23, 0.02]);
+    gl.uniform3f(gl.getUniformLocation(progM, 'uColor'), mc[0], mc[1], mc[2]);
+    gl.uniform3f(gl.getUniformLocation(progM, 'uShadow'), ms[0], ms[1], ms[2]);
+    var aP = gl.getAttribLocation(progM, 'aPos'), aN = gl.getAttribLocation(progM, 'aNrm');
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufP); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufN); gl.enableVertexAttribArray(aN); gl.vertexAttribPointer(aN, 3, gl.FLOAT, false, 0, 0);
+    if (soup) { gl.drawArrays(gl.TRIANGLES, 0, idxCount); }
+    else { gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufI); gl.drawElements(gl.TRIANGLES, idxCount, hasUint ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT, 0); }
+  }
+
+  /* orbit: drag, wheel, pinch, arrow keys */
+  var ptrs = {}, pinch0 = 0;
+  function clampDist() { cam.dist = clamp(cam.dist, cam.fit * 0.25, cam.fit * 4); }
+  el.canvas.addEventListener('pointerdown', function (e) { el.canvas.setPointerCapture(e.pointerId); ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; pinch0 = 0; });
+  el.canvas.addEventListener('pointermove', function (e) {
+    var p = ptrs[e.pointerId]; if (!p) return;
+    var ids = Object.keys(ptrs);
+    if (ids.length === 2) {
+      ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var a = ptrs[ids[0]], b = ptrs[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch0) { cam.dist *= pinch0 / d; clampDist(); }
+      pinch0 = d; requestDraw(); return;
+    }
+    cam.yaw -= (e.clientX - p.x) * 0.008;
+    cam.pitch = clamp(cam.pitch + (e.clientY - p.y) * 0.008, -1.2, 1.52);
+    p.x = e.clientX; p.y = e.clientY; requestDraw();
+  });
+  function endPtr(e) { delete ptrs[e.pointerId]; pinch0 = 0; }
+  el.canvas.addEventListener('pointerup', endPtr); el.canvas.addEventListener('pointercancel', endPtr);
+  el.canvas.addEventListener('wheel', function (e) { e.preventDefault(); cam.dist *= Math.exp(e.deltaY * 0.0012); clampDist(); requestDraw(); }, { passive: false });
+  el.canvas.addEventListener('keydown', function (e) {
+    var used = true;
+    if (e.key === 'ArrowLeft') cam.yaw += 0.1; else if (e.key === 'ArrowRight') cam.yaw -= 0.1;
+    else if (e.key === 'ArrowUp') cam.pitch = clamp(cam.pitch + 0.08, -1.2, 1.52); else if (e.key === 'ArrowDown') cam.pitch = clamp(cam.pitch - 0.08, -1.2, 1.52);
+    else if (e.key === '+' || e.key === '=') { cam.dist *= 0.9; clampDist(); } else if (e.key === '-') { cam.dist *= 1.1; clampDist(); }
+    else used = false;
+    if (used) { e.preventDefault(); requestDraw(); }
+  });
+  el.reset.addEventListener('click', function () { cam.yaw = 0.7; cam.pitch = 0.5; cam.dist = cam.fit; requestDraw(); });
+
+  /* ---------------- start ---------------- */
+  initGL();
+  if (window.ResizeObserver) new ResizeObserver(function () { resize(); }).observe(el.stage); else window.addEventListener('resize', resize);
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', requestDraw); } catch (e) {}
+  try { new MutationObserver(requestDraw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
+  syncControls();
+  syncFormat();
+  resize();
+  rebuild();
+  window.__gm = { state: state, getMesh: function () { return mesh; }, loadFile: loadFile, getModel: function () { return userModel; } };
+})();
+</script>

@@ -1,0 +1,5 @@
+node_modules/
+*.stl
+*.3mf
+*.png
+.DS_Store
